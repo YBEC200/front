@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<head>
+  <title>Pusher Test</title>
+  <script src="https://js.pusher.com/8.4.0/pusher.min.js"></script>
+  <script>
+
+    // Enable pusher logging - don't include this in production
+    Pusher.logToConsole = true;
+
+    var pusher = new Pusher('c87165fe436b0a5d5ba0', {
+      cluster: 'mt1'
+    });
+
+    var channel = pusher.subscribe('my-channel');
+    channel.bind('my-event', function(data) {
+        const chatBox = document.getElementById('chatBox');
+        const messageElement = document.createElement('div');
+        messageElement.style.marginBottom = '10px';
+        messageElement.style.padding = '8px';
+        messageElement.style.backgroundColor = '#6daed4';
+        messageElement.style.borderRadius = '8px';
+        messageElement.style.color = 'white';
+        messageElement.style.width = 'fit-content';
+        messageElement.textContent = JSON.stringify(data);
+        chatBox.appendChild(messageElement);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    });
+
+  </script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f1f1f1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .chat-container {
+      background-color: #fff;
+      border: 1px solid #ccc;
+      border-radius: 18px;
+      width: 300px;
+      padding: 20px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .chat-box {
+      height: 500px;
+      border: 1px solid #ddd;
+      margin-bottom: 10px;
+      padding: 10px;
+      overflow-y: auto;
+      background-color: #fafafa;
+    }
+
+    .input-box {
+      width: 100%;
+    }
+
+    .input-box input {
+      width: 100%;
+      padding: 10px;
+      font-size: 14px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <div class="chat-box" id="chatBox">
+      <!-- Mensajes aparecerán aquí -->
+    </div>
+    <div class="input-box">
+        <p></p>
+      <input type="text" id="chatInput" placeholder="Escribe un mensaje..." data-bs-toggle='' data-bs-target=''/>
+    </div>
+  </div>
+  <script>
+    const input = document.getElementById('chatInput');
+
+    input.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter') {
+        event.preventDefault(); // Evita salto de línea si fuera textarea
+        const message = input.value.trim();
+        if (message !== '') {
+          fetch("http://127.0.0.1:5000", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ message: message })
+          })
+            .then((data) => {
+              console.log("Respuesta del servidor:", data);
+            })
+          input.value = ''; // Limpia el input después del envío
+        }
+      }
+    });
+  </script>
+</body>
