@@ -3,29 +3,27 @@
   <title>Pusher Test</title>
   <script src="https://js.pusher.com/8.4.0/pusher.min.js"></script>
   <script>
-
     // Enable pusher logging - don't include this in production
     Pusher.logToConsole = true;
 
-    var pusher = new Pusher('c87165fe436b0a5d5ba0', {
-      cluster: 'mt1'
+    var pusher = new Pusher("c87165fe436b0a5d5ba0", {
+      cluster: "mt1",
     });
 
-    var channel = pusher.subscribe('my-channel');
-    channel.bind('my-event', function(data) {
-        const chatBox = document.getElementById('chatBox');
-        const messageElement = document.createElement('div');
-        messageElement.style.marginBottom = '10px';
-        messageElement.style.padding = '8px';
-        messageElement.style.backgroundColor = '#6daed4';
-        messageElement.style.borderRadius = '8px';
-        messageElement.style.color = 'white';
-        messageElement.style.width = 'fit-content';
-        messageElement.textContent = JSON.stringify(data);
-        chatBox.appendChild(messageElement);
-        chatBox.scrollTop = chatBox.scrollHeight;
+    var channel = pusher.subscribe("my-channel");
+    channel.bind("my-event", function (data) {
+      const chatBox = document.getElementById("chatBox");
+      const messageElement = document.createElement("div");
+      messageElement.style.marginBottom = "10px";
+      messageElement.style.padding = "8px";
+      messageElement.style.backgroundColor = "#6daed4";
+      messageElement.style.borderRadius = "8px";
+      messageElement.style.color = "white";
+      messageElement.style.width = "fit-content";
+      messageElement.textContent = JSON.stringify(data);
+      chatBox.appendChild(messageElement);
+      chatBox.scrollTop = chatBox.scrollHeight;
     });
-
   </script>
   <style>
     body {
@@ -75,29 +73,54 @@
       <!-- Mensajes aparecerán aquí -->
     </div>
     <div class="input-box">
-        <p></p>
-      <input type="text" id="chatInput" placeholder="Escribe un mensaje..." data-bs-toggle='' data-bs-target=''/>
+      <p></p>
+      <input
+        type="text"
+        id="chatInput"
+        placeholder="Escribe un mensaje..."
+        data-bs-toggle=""
+        data-bs-target=""
+      />
     </div>
   </div>
   <script>
-    const input = document.getElementById('chatInput');
+    const input = document.getElementById("chatInput");
 
-    input.addEventListener('keydown', function (event) {
-      if (event.key === 'Enter') {
+    input.addEventListener("keydown", function (event) {
+      if (event.key === "Enter") {
         event.preventDefault(); // Evita salto de línea si fuera textarea
         const message = input.value.trim();
-        if (message !== '') {
+        if (message !== "") {
           fetch("https://back-usro.onrender.com", {
             method: "POST",
             headers: {
-              "Content-Type": "application/json"
+              "Content-Type": "application/json",
             },
-            body: JSON.stringify({ message: message })
+            body: JSON.stringify({ message: message }),
           })
             .then((data) => {
               console.log("Respuesta del servidor:", data);
+              if (data.status === "ok") {
+                // Añadir mensaje a la UI inmediatamente (Pusher también lo emitirá)
+                const chatBox = document.getElementById("chatBox");
+                const messageElement = document.createElement("div");
+                messageElement.style.marginBottom = "10px";
+                messageElement.style.padding = "8px";
+                messageElement.style.backgroundColor = "#6daed4";
+                messageElement.style.borderRadius = "8px";
+                messageElement.style.color = "white";
+                messageElement.style.width = "fit-content";
+                messageElement.textContent = message;
+                chatBox.appendChild(messageElement);
+                chatBox.scrollTop = chatBox.scrollHeight;
+              } else {
+                console.error("Error backend:", data.message);
+              }
             })
-          input.value = ''; // Limpia el input después del envío
+            .catch((err) => {
+              console.error("Fetch error:", err);
+            });
+          input.value = ""; // Limpia el input después del envío
         }
       }
     });
