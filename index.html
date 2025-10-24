@@ -97,29 +97,9 @@
               "Content-Type": "application/json",
             },
             body: JSON.stringify({ message: message }),
-          })
-            .then((data) => {
-              console.log("Respuesta del servidor:", data);
-              if (data.status === "ok") {
-                // Añadir mensaje a la UI inmediatamente (Pusher también lo emitirá)
-                const chatBox = document.getElementById("chatBox");
-                const messageElement = document.createElement("div");
-                messageElement.style.marginBottom = "10px";
-                messageElement.style.padding = "8px";
-                messageElement.style.backgroundColor = "#6daed4";
-                messageElement.style.borderRadius = "8px";
-                messageElement.style.color = "white";
-                messageElement.style.width = "fit-content";
-                messageElement.textContent = message;
-                chatBox.appendChild(messageElement);
-                chatBox.scrollTop = chatBox.scrollHeight;
-              } else {
-                console.error("Error backend:", data.message);
-              }
-            })
-            .catch((err) => {
-              console.error("Fetch error:", err);
-            });
+          }).then((data) => {
+            console.log("Respuesta del servidor:", data);
+          });
           input.value = ""; // Limpia el input después del envío
         }
       }
