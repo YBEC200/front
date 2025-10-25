@@ -23,7 +23,51 @@
       messageElement.textContent = JSON.stringify(data);
       chatBox.appendChild(messageElement);
       chatBox.scrollTop = chatBox.scrollHeight;
+
+      if (typeof loadMessages === "function") loadMessages();
     });
+
+    Pusher.logToConsole = true;
+    const keyA = "08f9ca3827443d276de3";
+    const keyB = "5398827de005ac67b6b2";
+    let currentKey = keyA;
+
+    window.pusher = null;
+    window.channel = null;
+
+    function initPusher(key) {
+      try {
+        if (window.channel && window.pusher) {
+          window.pusher.unsubscribe(window.channel.name);
+        }
+        if (window.pusher) {
+          window.pusher.disconnect();
+        }
+      } catch (e) {
+        console.warn("Error al desconectar pusher previo:", e);
+      }
+
+      window.pusher = new Pusher(key, { cluster: "mt1" });
+      window.channel = window.pusher.subscribe("my-channel");
+      window.channel.bind("my-event", function (data) {
+        const chatBox = document.getElementById("chatBox");
+        const messageElement = document.createElement("div");
+        messageElement.style.marginBottom = "10px";
+        messageElement.style.padding = "8px";
+        messageElement.style.backgroundColor = "#6daed4";
+        messageElement.style.borderRadius = "8px";
+        messageElement.style.color = "white";
+        messageElement.style.width = "fit-content";
+        messageElement.textContent = JSON.stringify(data);
+        chatBox.appendChild(messageElement);
+        chatBox.scrollTop = chatBox.scrollHeight;
+        // opcional: actualizar historial si existe la función
+        if (typeof loadMessages === "function") loadMessages();
+      });
+    }
+
+    // Inicializa con la key por defecto
+    initPusher(currentKey);
   </script>
   <style>
     body {
@@ -33,6 +77,32 @@
       justify-content: center;
       align-items: center;
       height: 100vh;
+    }
+
+    .user-switch {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      width: 120px;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 0 6px rgba(0,0,0,0.05);
+    }
+    .user-switch button {
+      width: 100%;
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid #bbb;
+      background: #f7f7f7;
+      cursor: pointer;
+    }
+    .user-switch button.active {
+      background: #6daed4;
+      color: white;
+      border-color: #5a9cc0;
     }
 
     .chat-container {
@@ -99,36 +169,43 @@
 <body>
   <div class="container">
     <div class="chat-container">
-      <div class="chat-box" id="chatBox">
-        <!-- Mensajes aparecerán aquí -->
-      </div>
-      <div class="input-box">
-        <p></p>
-        <input
-          type="text"
-          id="chatInput"
-          placeholder="Escribe un mensaje..."
-          data-bs-toggle=""
-          data-bs-target=""
-        />
-      </div>
+       <div class="chat-box" id="chatBox">
+         <!-- Mensajes aparecerán aquí -->
+       </div>
+       <div class="input-box">
+         <p></p>
+         <input
+           type="text"
+           id="chatInput"
+           placeholder="Escribe un mensaje..."
+           data-bs-toggle=""
+           data-bs-target=""
+         />
+       </div>
+     </div>
+    <!-- Caja con botones para alternar entre usuarios/keys -->
+    <div class="user-switch" id="userSwitch">
+      <button id="btnUserA" class="active">Usuario A</button>
+      <button id="btnUserB">Usuario B</button>
+      <div id="currentKeyLabel" style="font-size:12px; color:#666;">Key: 08...</div>
     </div>
-    <div class="messages-table">
-      <h3>Historial de Mensajes</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>Mensaje</th>
-            <th>Fecha</th>
-          </tr>
-        </thead>
-        <tbody id="messagesList">
-          <!-- Los mensajes se cargarán aquí -->
-        </tbody>
-      </table>
-    </div>
-  </div>
+     <div class="messages-table">
+       <h3>Historial de Mensajes</h3>
+       <table>
+         <thead>
+           <tr>
+             <th>Mensaje</th>
+             <th>Fecha</th>
+           </tr>
+         </thead>
+         <tbody id="messagesList">
+           <!-- Los mensajes se cargarán aquí -->
+         </tbody>
+       </table>
+     </div>
+   </div>
   <script>
+    
     const input = document.getElementById("chatInput");
 
     input.addEventListener('keydown', function (event) {
@@ -141,7 +218,7 @@
           const messageElement = document.createElement('div');
           messageElement.style.marginBottom = '10px';
           messageElement.style.padding = '8px';
-          messageElement.style.backgroundColor = '#6daed4';
+          messageElement.style.backgroundColor = '#7daed4';
           messageElement.style.borderRadius = '8px';
           messageElement.style.color = 'white';
           messageElement.style.width = 'fit-content';
@@ -210,5 +287,28 @@
     channel.bind("my-event", function (data) {
       loadMessages(); // Actualiza la tabla
     });
+
+    // Botones para alternar entre claves/usuarios
+    const btnA = document.getElementById("btnUserA");
+    const btnB = document.getElementById("btnUserB");
+    const currentKeyLabel = document.getElementById("currentKeyLabel");
+
+    function switchUser(key, activeButton) {
+      // limpia chat visible
+      const chatBox = document.getElementById("chatBox");
+      chatBox.innerHTML = "";
+      // reinicia pusher con la nueva key
+      initPusher(key);
+      // actualiza etiqueta y clases
+      currentKeyLabel.textContent = "Key: " + key;
+      btnA.classList.remove("active");
+      btnB.classList.remove("active");
+      activeButton.classList.add("active");
+      // recarga historial (si corresponde)
+      loadMessages();
+    }
+
+    btnA.addEventListener("click", () => switchUser(keyA, btnA));
+    btnB.addEventListener("click", () => switchUser(keyB, btnB));
   </script>
 </body>
