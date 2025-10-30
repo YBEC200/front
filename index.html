@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <head>
-  <title>Pusher Test</title>
+  <title>Chatbot</title>
   <script src="https://js.pusher.com/8.4.0/pusher.min.js"></script>
   <script>
     // Enable pusher logging - don't include this in production
@@ -16,11 +16,12 @@
       const messageElement = document.createElement("div");
       messageElement.style.marginBottom = "10px";
       messageElement.style.padding = "8px";
-      messageElement.style.backgroundColor = "#6daed4";
+      messageElement.style.backgroundColor = "#695C5B";
       messageElement.style.borderRadius = "8px";
       messageElement.style.color = "white";
       messageElement.style.width = "fit-content";
       messageElement.textContent = JSON.stringify(data);
+      messageElement.align = "right";
       chatBox.appendChild(messageElement);
       chatBox.scrollTop = chatBox.scrollHeight;
 
@@ -28,28 +29,34 @@
     });
 
     Pusher.logToConsole = true;
-    const keyA = "08f9ca3827443d276de3";
-    const keyB = "5398827de005ac67b6b2";
-    let currentKey = keyA;
+    const PUSHER_CONFIG = {
+      keyA: "08f9ca3827443d276de3",
+      keyB: "5398827de005ac67b6b2",
+      channelA: "josue-yeremi",
+      channelB: "otro-channel",
+      cluster: "mt1",
+    };
 
-    window.pusher = null;
-    window.channel = null;
+    let currentKey = PUSHER_CONFIG.keyA;
+    let currentChannel = PUSHER_CONFIG.channelA;
+    let pusherClient = null;
+    let currentPusherChannel = null;
 
-    function initPusher(key) {
-      try {
-        if (window.channel && window.pusher) {
-          window.pusher.unsubscribe(window.channel.name);
+    function initPusher(key, channelName) {
+      // Desconectar Pusher anterior si existe
+      if (pusherClient) {
+        if (currentPusherChannel) {
+          pusherClient.unsubscribe(currentPusherChannel.name);
         }
-        if (window.pusher) {
-          window.pusher.disconnect();
-        }
-      } catch (e) {
-        console.warn("Error al desconectar pusher previo:", e);
+        pusherClient.disconnect();
       }
 
-      window.pusher = new Pusher(key, { cluster: "mt1" });
-      window.channel = window.pusher.subscribe("my-channel");
-      window.channel.bind("my-event", function (data) {
+      // Inicializar nuevo Pusher
+      pusherClient = new Pusher(key, { cluster: PUSHER_CONFIG.cluster });
+      currentPusherChannel = pusherClient.subscribe(channelName);
+
+      // Configurar el listener de mensajes
+      currentPusherChannel.bind("my-event", function (data) {
         const chatBox = document.getElementById("chatBox");
         const messageElement = document.createElement("div");
         messageElement.style.marginBottom = "10px";
@@ -58,16 +65,74 @@
         messageElement.style.borderRadius = "8px";
         messageElement.style.color = "white";
         messageElement.style.width = "fit-content";
-        messageElement.textContent = JSON.stringify(data);
+        messageElement.textContent =
+          typeof data === "string" ? data : JSON.stringify(data);
         chatBox.appendChild(messageElement);
         chatBox.scrollTop = chatBox.scrollHeight;
-        // opcional: actualizar historial si existe la función
-        if (typeof loadMessages === "function") loadMessages();
+
+        // Actualizar la tabla de mensajes
+        loadMessages();
       });
     }
 
-    // Inicializa con la key por defecto
-    initPusher(currentKey);
+    // Función para cambiar de usuario
+    function switchUser(key, channel, activeButton) {
+      // Limpiar chat visible
+      const chatBox = document.getElementById("chatBox");
+      chatBox.innerHTML = "";
+
+      // Reiniciar Pusher con nueva configuración
+      initPusher(key, channel);
+
+      // Actualizar UI
+      const currentKeyLabel = document.getElementById("currentKeyLabel");
+      const btnA = document.getElementById("btnUserA");
+      const btnB = document.getElementById("btnUserB");
+
+      currentKeyLabel.textContent = `Key: ${key.slice(
+        0,
+        3
+      )}... | Channel: ${channel}`;
+      btnA.classList.remove("active");
+      btnB.classList.remove("active");
+      activeButton.classList.add("active");
+
+      // Actualizar variables globales
+      currentKey = key;
+      currentChannel = channel;
+
+      // Recargar historial
+      loadMessages();
+    }
+
+    // Inicializar con valores por defecto
+    document.addEventListener("DOMContentLoaded", function () {
+      initPusher(currentKey, currentChannel);
+
+      // Configurar event listeners de los botones
+      document
+        .getElementById("btnUserA")
+        .addEventListener("click", () =>
+          switchUser(
+            PUSHER_CONFIG.keyA,
+            PUSHER_CONFIG.channelA,
+            document.getElementById("btnUserA")
+          )
+        );
+
+      document
+        .getElementById("btnUserB")
+        .addEventListener("click", () =>
+          switchUser(
+            PUSHER_CONFIG.keyB,
+            PUSHER_CONFIG.channelB,
+            document.getElementById("btnUserB")
+          )
+        );
+
+      // Iniciar carga de mensajes
+      loadMessages();
+    });
   </script>
   <style>
     body {
@@ -89,7 +154,7 @@
       border: 1px solid #ccc;
       border-radius: 12px;
       padding: 12px;
-      box-shadow: 0 0 6px rgba(0,0,0,0.05);
+      box-shadow: 0 0 6px rgba(0, 0, 0, 0.05);
     }
     .user-switch button {
       width: 100%;
@@ -113,8 +178,26 @@
       padding: 20px;
       box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     }
+    .message {
+      margin-bottom: 10px;
+      padding: 8px;
+      border-radius: 8px;
+      color: white;
+      width: fit-content;
+    }
+
+    .message-sent {
+      background-color: #695c5b;
+      margin-left: auto;
+    }
+
+    .message-received {
+      background-color: #6daed4;
+    }
 
     .chat-box {
+      display: flex;
+      flex-direction: column;
       height: 500px;
       border: 1px solid #ddd;
       margin-bottom: 10px;
@@ -164,81 +247,146 @@
     th {
       background-color: #f2f2f2;
     }
+
+    .messages-table {
+      background-color: #fff;
+      border: 1px solid #ccc;
+      border-radius: 18px;
+      width: 400px;
+      padding: 20px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      /* Añadir estas propiedades */
+      max-height: 500px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Añadir estos estilos nuevos */
+    .table-container {
+      overflow-y: auto;
+      max-height: calc(100% - 40px); /* 40px para el título h3 */
+      scrollbar-width: thin;
+      scrollbar-color: #6daed4 #f1f1f1;
+    }
+
+    /* Estilos para scrollbar en Chrome/Safari */
+    .table-container::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .table-container::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 4px;
+    }
+
+    .table-container::-webkit-scrollbar-thumb {
+      background: #6daed4;
+      border-radius: 4px;
+    }
+
+    .table-container::-webkit-scrollbar-thumb:hover {
+      background: #5a9cc0;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="chat-container">
-       <div class="chat-box" id="chatBox">
-         <!-- Mensajes aparecerán aquí -->
-       </div>
-       <div class="input-box">
-         <p></p>
-         <input
-           type="text"
-           id="chatInput"
-           placeholder="Escribe un mensaje..."
-           data-bs-toggle=""
-           data-bs-target=""
-         />
-       </div>
-     </div>
+      <div class="chat-box" id="chatBox">
+        <!-- Mensajes aparecerán aquí -->
+      </div>
+      <div class="input-box">
+        <p></p>
+        <input
+          type="text"
+          id="chatInput"
+          placeholder="Escribe un mensaje...x"
+          data-bs-toggle=""
+          data-bs-target=""
+        />
+      </div>
+    </div>
     <!-- Caja con botones para alternar entre usuarios/keys -->
     <div class="user-switch" id="userSwitch">
       <button id="btnUserA" class="active">Usuario A</button>
       <button id="btnUserB">Usuario B</button>
-      <div id="currentKeyLabel" style="font-size:12px; color:#666;">Key: 08...</div>
+      <div id="currentKeyLabel" style="font-size: 12px; color: #666">
+        Key: 08...
+      </div>
     </div>
-     <div class="messages-table">
-       <h3>Historial de Mensajes</h3>
-       <table>
-         <thead>
-           <tr>
-             <th>Mensaje</th>
-             <th>Fecha</th>
-           </tr>
-         </thead>
-         <tbody id="messagesList">
-           <!-- Los mensajes se cargarán aquí -->
-         </tbody>
-       </table>
-     </div>
-   </div>
+    <div class="messages-table">
+      <h3>Historial de Mensajes</h3>
+      <button
+        id="btnRefresh"
+        style="
+          padding: 6px 10px;
+          border-radius: 6px;
+          border: 1px solid #6daed4;
+          background: #fff;
+          color: #333;
+          cursor: pointer;
+        "
+      >
+        Actualizar
+      </button>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Mensaje</th>
+              <th>Fecha</th>
+            </tr>
+          </thead>
+          <tbody id="messagesList">
+            <!-- Los mensajes se cargarán aquí -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
   <script>
-    
     const input = document.getElementById("chatInput");
+    const channelUserInput = document.getElementById("channel-user");
 
-    input.addEventListener('keydown', function (event) {
-      if (event.key === 'Enter') {
-        event.preventDefault(); // Evita salto de línea si fuera textarea
+    input.addEventListener("keydown", function (event) {
+      if (event.key === "Enter") {
+        event.preventDefault();
         const message = input.value.trim();
-        if (message !== '') {
+        if (message !== "") {
           // Mostrar mensaje en la chatBox localmente
-          const chatBox = document.getElementById('chatBox');
-          const messageElement = document.createElement('div');
-          messageElement.style.marginBottom = '10px';
-          messageElement.style.padding = '8px';
-          messageElement.style.backgroundColor = '#7daed4';
-          messageElement.style.borderRadius = '8px';
-          messageElement.style.color = 'white';
-          messageElement.style.width = 'fit-content';
-          messageElement.textContent = message;  // Agregamos el mensaje
+          const chatBox = document.getElementById("chatBox");
+          const messageElement = document.createElement("div");
+          messageElement.style.marginBottom = "10px";
+          messageElement.style.padding = "8px";
+          messageElement.style.backgroundColor = "#7daed4";
+          messageElement.style.borderRadius = "8px";
+          messageElement.style.color = "white";
+          messageElement.style.width = "fit-content";
+          messageElement.textContent = message;
+          messageElement.style.marginLeft = "auto"; // Alinear a la derecha
           chatBox.appendChild(messageElement);
-          chatBox.scrollTop = chatBox.scrollHeight;  // Hacer scroll hacia abajo automáticamente
+          chatBox.scrollTop = chatBox.scrollHeight;
 
-          // Enviar mensaje al backend (Render + Pusher)
+          // Enviar mensaje al backend con el canal actual
           fetch("https://back-usro.onrender.com", {
             method: "POST",
             headers: {
-              "Content-Type": "application/json"
+              "Content-Type": "application/json",
             },
-            body: JSON.stringify({ message: message })
+            body: JSON.stringify({
+              message: message,
+              channel: currentChannel,
+            }),
           })
-          .then((data) => {
-            console.log("Respuesta del servidor:", data);
-          })
+            .then((response) => response.json())
+            .then((data) => {
+              console.log("Respuesta del servidor:", data);
+            })
+            .catch((error) => {
+              console.error("Error:", error);
+            });
 
-          input.value = ''; // Limpia el input después del envío
+          input.value = "";
         }
       }
     });
@@ -267,9 +415,7 @@
                   <td>${
                     msg.mensaje ? msg.mensaje.replace(/</g, "&lt;") : ""
                   }</td>
-                  <td>${
-                    msg.fecha_publicacion ? msg.fecha_publicacion : ""
-                  }</td>
+                  <td>${msg.fecha_publicacion ? msg.fecha_publicacion : ""}</td>
               `;
           tbody.appendChild(row);
         });
@@ -283,32 +429,26 @@
     // Cargar mensajes al inicio
     loadMessages();
 
-    // Recargar mensajes cuando se recibe uno nuevo
-    channel.bind("my-event", function (data) {
-      loadMessages(); // Actualiza la tabla
-    });
-
-    // Botones para alternar entre claves/usuarios
-    const btnA = document.getElementById("btnUserA");
-    const btnB = document.getElementById("btnUserB");
-    const currentKeyLabel = document.getElementById("currentKeyLabel");
-
-    function switchUser(key, activeButton) {
-      // limpia chat visible
-      const chatBox = document.getElementById("chatBox");
-      chatBox.innerHTML = "";
-      // reinicia pusher con la nueva key
-      initPusher(key);
-      // actualiza etiqueta y clases
-      currentKeyLabel.textContent = "Key: " + key;
-      btnA.classList.remove("active");
-      btnB.classList.remove("active");
-      activeButton.classList.add("active");
-      // recarga historial (si corresponde)
-      loadMessages();
+    const btnRefresh = document.getElementById("btnRefresh");
+    if (btnRefresh) {
+      btnRefresh.addEventListener("click", function () {
+        const btn = this;
+        btn.disabled = true;
+        const original = btn.textContent;
+        btn.textContent = "Cargando...";
+        // loadMessages es async, usar finally para restaurar el botón
+        loadMessages().finally(() => {
+          btn.disabled = false;
+          btn.textContent = original;
+        });
+      });
     }
 
-    btnA.addEventListener("click", () => switchUser(keyA, btnA));
-    btnB.addEventListener("click", () => switchUser(keyB, btnB));
+    // Recargar mensajes cuando se recibe uno nuevo
+    if (currentPusherChannel) {
+      currentPusherChannel.bind("my-event", function (data) {
+        loadMessages();
+      });
+    }
   </script>
 </body>
